@@ -1,0 +1,87 @@
+[project]
+name = "docverify-backend"
+version = "0.1.0"
+description = "MSME document collection and pre-validation layer"
+requires-python = ">=3.11"
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "sqlalchemy>=2.0",
+    "alembic>=1.14",
+    "python-multipart>=0.0.12",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Document processing. Added in Phase 5/6; declared here so the dependency
+# story is visible from the start.
+documents = [
+    "pypdf>=5.1",
+    "pdfplumber>=0.11",
+    "cryptography>=42.0",
+]
+# Scanned-document path. Pip-only, no system binary, models bundled (ADR-016).
+# Costs ~20s per A4 page; without it, image-only PDFs degrade to an explicit
+# "no OCR engine installed" error rather than a silently empty extraction.
+ocr = [
+    "rapidocr-onnxruntime>=1.2",
+    "pymupdf>=1.24",
+    "numpy>=1.26",
+]
+# Synthetic corpus generator (dev/test tooling, not shipped application code).
+corpus = [
+    "reportlab>=4.2",
+    "pymupdf>=1.24",
+    "pillow>=10.4",
+    "pypdf>=5.1",
+    "cryptography>=42.0",
+]
+# Postgres driver. Not needed for the default SQLite development database.
+postgres = [
+    "psycopg[binary]>=3.2",
+]
+llm = [
+    "anthropic>=0.40",
+]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# ".." puts the project root on the path so tests can import the `corpus` package,
+# which is dev tooling that lives outside the application package.
+pythonpath = [".", ".."]
+# OCR-backed tests are excluded by default: they cost ~20s per page, which is the
+# honest price of local extraction (ADR-002). Run them with `pytest -m slow`.
+addopts = '-q --strict-markers -m "not slow"'
+markers = [
+    "scenario: end-to-end acceptance scenario from PRODUCT_SPEC.md section 10",
+    "corpus: requires the generated synthetic corpus",
+    "slow: OCR-backed tests; ~20s per page. Run with -m slow",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM"]
+ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/*" = ["E501"]
+"../corpus/*" = ["E501"]

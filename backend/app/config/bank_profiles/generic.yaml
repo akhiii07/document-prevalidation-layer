@@ -1,0 +1,70 @@
+# Generic reading profile.
+#
+# Research established that there is NO public per-bank column specification and no
+# RBI-defined statement format (`RESEARCH_BANK_FORMATS.md` section 6). What is common
+# across banks is a small set of concepts -- date, narration, debit, credit, balance --
+# expressed with different labels (research section 3.3).
+#
+# So the profile is a set of *synonyms per concept*, not a per-bank template. A layout
+# nobody anticipated still parses as long as its headers use recognisable words, and no
+# blocking validation rule depends on any bank-specific detail.
+
+key: generic
+bank_name: null
+name_patterns: []
+ifsc_prefixes: []
+
+# Tried in order. Day-first throughout: 03/04/2026 is 3 April in India, and a
+# silently wrong month produces a confidently wrong period verdict.
+date_formats:
+  - "%d/%m/%Y"
+  - "%d/%m/%y"
+  - "%d-%m-%Y"
+  - "%d-%m-%y"
+  - "%d %b %Y"
+  - "%d %B %Y"
+  - "%d.%m.%Y"
+  - "%d %b %y"
+
+columns:
+  date: ["Txn Date", "Tran Date", "Transaction Date", "Date", "Post Date"]
+  value_date: ["Value Date", "Val Date"]
+  description:
+    - "Transaction Remarks"
+    - "Narration"
+    - "Particulars"
+    - "Description"
+    - "Transaction Details"
+    - "Remarks"
+  reference: ["Chq/Ref No", "Cheque No", "Ref No", "Reference", "Chq No", "Instrument"]
+  debit: ["Withdrawal Amt", "Withdrawal", "Debit Amount", "Debit", "Dr Amount", "Dr"]
+  credit: ["Deposit Amt", "Deposit", "Credit Amount", "Credit", "Cr Amount", "Cr"]
+  # Single-column layouts that carry a Dr/Cr marker in the value itself.
+  amount_drcr:
+    - "Withdrawal (Dr)/Deposit (Cr)"
+    - "Amount (Dr/Cr)"
+    - "Amount(Dr/Cr)"
+    - "Deposit(Cr)/Withdrawal(Dr)"
+    - "Amount"
+  balance: ["Closing Balance", "Running Balance", "Balance (INR)", "Balance"]
+
+header_labels:
+  account_holder_name: ["Account Name", "Customer Name", "Name of Account Holder", "Name"]
+  account_number: ["Account Number", "Account No", "A/C No", "Account #", "Acct No"]
+  account_type: ["Account Type", "Scheme", "Scheme Description", "Product", "A/C Type"]
+  period:
+    - "Statement Period"
+    - "Statement of Account for the period"
+    - "Period"
+    - "For the period"
+  ifsc: ["IFSC", "IFS Code", "IFSC Code"]
+
+# Separators between the two halves of a period string.
+period_separators: [" to ", " - ", " – ", " TO ", " thru ", " until "]
+
+# "Page 3 of 11" and friends.
+# Single-quoted: YAML interprets backslash escapes inside double quotes, which
+# mangles every regex written that way.
+page_marker_patterns:
+  - 'page\s+(\d+)\s+of\s+(\d+)'
+  - 'page\s*:\s*(\d+)\s*/\s*(\d+)'

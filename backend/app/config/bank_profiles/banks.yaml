@@ -1,0 +1,104 @@
+# Bank identification only.
+#
+# These entries say how to *recognise* a bank, never how to parse it: parsing uses the
+# generic synonym profile. Bank-specific layout claims would be UNVERIFIED
+# (`RESEARCH_BANK_FORMATS.md` section 4), and no blocking rule may rest on one.
+#
+# Identification is still worth doing: the customer-facing PASS message names the bank,
+# and the IFSC prefix is an independent cross-check on the printed name.
+
+banks:
+  - key: sbi
+    bank_name: State Bank of India
+    name_patterns: ["State Bank of India", "SBI"]
+    ifsc_prefixes: ["SBIN"]
+  - key: hdfc
+    bank_name: HDFC Bank
+    name_patterns: ["HDFC Bank", "HDFC"]
+    ifsc_prefixes: ["HDFC"]
+  - key: icici
+    bank_name: ICICI Bank
+    name_patterns: ["ICICI Bank", "ICICI"]
+    ifsc_prefixes: ["ICIC"]
+  - key: axis
+    bank_name: Axis Bank
+    name_patterns: ["Axis Bank", "AXIS"]
+    ifsc_prefixes: ["UTIB"]
+  - key: kotak
+    bank_name: Kotak Mahindra Bank
+    name_patterns: ["Kotak Mahindra Bank", "Kotak"]
+    ifsc_prefixes: ["KKBK"]
+  - key: pnb
+    bank_name: Punjab National Bank
+    name_patterns: ["Punjab National Bank"]
+    ifsc_prefixes: ["PUNB"]
+  - key: bob
+    bank_name: Bank of Baroda
+    name_patterns: ["Bank of Baroda"]
+    ifsc_prefixes: ["BARB"]
+  # Quoted: YAML 1.1 parses a bare `yes` as boolean true.
+  - key: "yes_bank"
+    bank_name: Yes Bank
+    name_patterns: ["YES BANK", "Yes Bank"]
+    ifsc_prefixes: ["YESB"]
+  - key: idfc
+    bank_name: IDFC FIRST Bank
+    name_patterns: ["IDFC FIRST", "IDFC"]
+    ifsc_prefixes: ["IDFB"]
+  - key: indusind
+    bank_name: IndusInd Bank
+    name_patterns: ["IndusInd"]
+    ifsc_prefixes: ["INDB"]
+  # The public-sector banks below were added after a real Canara Bank statement was
+  # identified as "HDFC Bank" in testing. The name was not on this list, so the matcher
+  # fell through to the first bank named anywhere on the page -- which, on a statement
+  # full of UPI narrations, is whoever the customer last paid. An absent entry is not a
+  # neutral gap: it is an active source of wrong answers.
+  - key: canara
+    bank_name: Canara Bank
+    name_patterns: ["Canara Bank", "Canara"]
+    ifsc_prefixes: ["CNRB"]
+  - key: union
+    bank_name: Union Bank of India
+    name_patterns: ["Union Bank of India", "Union Bank"]
+    ifsc_prefixes: ["UBIN"]
+  - key: boi
+    bank_name: Bank of India
+    name_patterns: ["Bank of India"]
+    ifsc_prefixes: ["BKID"]
+  - key: central
+    bank_name: Central Bank of India
+    name_patterns: ["Central Bank of India"]
+    ifsc_prefixes: ["CBIN"]
+  - key: indian
+    bank_name: Indian Bank
+    name_patterns: ["Indian Bank"]
+    ifsc_prefixes: ["IDIB"]
+  - key: iob
+    bank_name: Indian Overseas Bank
+    name_patterns: ["Indian Overseas Bank"]
+    ifsc_prefixes: ["IOBA"]
+  - key: uco
+    bank_name: UCO Bank
+    name_patterns: ["UCO Bank"]
+    ifsc_prefixes: ["UCBA"]
+  - key: maharashtra
+    bank_name: Bank of Maharashtra
+    name_patterns: ["Bank of Maharashtra"]
+    ifsc_prefixes: ["MAHB"]
+  - key: psb
+    bank_name: Punjab & Sind Bank
+    name_patterns: ["Punjab & Sind Bank", "Punjab and Sind Bank"]
+    ifsc_prefixes: ["PSIB"]
+  - key: federal
+    bank_name: Federal Bank
+    name_patterns: ["Federal Bank"]
+    ifsc_prefixes: ["FDRL"]
+  - key: rbl
+    bank_name: RBL Bank
+    name_patterns: ["RBL Bank"]
+    ifsc_prefixes: ["RATN"]
+  - key: bandhan
+    bank_name: Bandhan Bank
+    name_patterns: ["Bandhan Bank"]
+    ifsc_prefixes: ["BDBL"]

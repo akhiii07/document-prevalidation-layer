@@ -1,0 +1,32 @@
+# PostgreSQL for parity with the deployment target.
+#
+# The application's default database is SQLite (ADR-012), so this file is optional --
+# nothing in the project requires Docker to run. Use it when you want to verify that
+# migrations and queries behave identically on Postgres before deploying.
+#
+#   docker compose up -d db
+#   export DATABASE_URL=postgresql+psycopg://docverify:docverify@localhost:5432/docverify
+#   pip install -e ".[postgres]" && alembic upgrade head && pytest
+#
+# NOTE: untested in this environment -- Docker is not installed on the development
+# machine this was scaffolded on. Verify before relying on it.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: docverify
+      POSTGRES_PASSWORD: docverify
+      POSTGRES_DB: docverify
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docverify"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

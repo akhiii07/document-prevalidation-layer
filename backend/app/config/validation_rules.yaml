@@ -1,0 +1,182 @@
+# Validation rule configuration.
+#
+# Source of truth for the *reasoning* behind every value: docs/VALIDATION_RULES.md
+# Nothing here may be hardcoded elsewhere in the application.
+#
+# Evidence tags: VERIFIED (publicly documented) | INDUSTRY (documented practice)
+#                INFERRED | ASSUMPTION (our decision, changeable)
+
+version: 1
+document_type: bank_statement
+
+file:
+  # ASSUMPTION - product scope decision. Images excluded from MVP on purpose.
+  allowed_mime_types: ["application/pdf"]
+  # Magic-byte prefixes checked instead of trusting extension or client MIME type.
+  magic_prefixes: ["%PDF-"]
+  # ASSUMPTION - 6 months of MSME current-account activity is 10-40 native-text pages.
+  max_file_size_mb: 20
+  max_password_attempts: 5
+
+document:
+  # ASSUMPTION - structural classification score below which we do not claim a verdict.
+  doc_type_confidence_threshold: 0.70
+  # Account type is not printed on every Indian statement (RESEARCH_BANK_FORMATS.md 3.1).
+  # Absence must not produce a false FIX, so it degrades coverage instead.
+  account_type_absent_behaviour: not_evaluated
+  current_account_tokens:
+    - "current account"
+    - "current a/c"
+    - "current"
+    - "ca"
+
+period:
+  # VERIFIED - FlexiLoans publicly requires "last 6 months of bank statement of
+  # current account"; 6-12 months is the Indian market norm.
+  required_coverage_days: 180
+  # Absorbs calendar-boundary effects only. A 4-month statement misses by ~60 days.
+  coverage_tolerance_days: 3
+  # ASSUMPTION - weakest-evidenced rule in the product. No public source specifies
+  # statement recency. Banks issue on monthly cycles, so the newest statement a
+  # customer can hold may legitimately be ~31 days old, plus slack.
+  # Calibrate against a real lender policy before production.
+  recency_tolerance_days: 35
+  # Anchoring to the application (not "today") keeps verdicts reproducible.
+  reference_date_source: application_created_at
+  # Indian convention. Ambiguous dates must be reported, never guessed.
+  date_order: day_first
+
+completeness:
+  # INR 1.00 in paise. Absorbs rounding, not real breaks.
+  balance_tolerance_paise: 100
+  # A balance chain cannot be judged from a handful of rows. Below this many *complete*
+  # transactions the rule reports NOT_EVALUATED rather than declaring a break -- a
+  # partial read produces breaks that are artefacts of our extraction, not defects in
+  # the customer's document, and blaming the document for them is the worst thing this
+  # product can do.
+  min_transactions_for_balance_check: 10
+
+readability:
+  # ASSUMPTION
+  min_readable_page_ratio: 0.90
+  min_ocr_word_confidence: 0.60
+
+# Extraction settings. Not validation rules, but config all the same: nothing here
+# may be hardcoded in the extractor.
+extraction:
+  # 150 dpi is the knee of the curve: 200 dpi costs ~25% more time for no measured
+  # accuracy gain on these documents, and 110 dpi saves little.
+  ocr_dpi: 150
+  # Pages to read before judging whether the document is worth finishing.
+  ocr_probe_pages: 2
+  # If more than this share of reads on the probe pages fall below the confidence
+  # floor, stop. The outcome is REVIEW either way, and three more minutes of OCR only
+  # makes the customer wait longer for it.
+  ocr_abort_low_fraction: 0.20
+  # Pages to read before judging whether the table is worth finishing. Higher than the
+  # confidence probe because a table can legitimately start after a cover page.
+  ocr_structural_probe_pages: 3
+  # A hard ceiling so a pathological upload cannot occupy the worker indefinitely.
+  ocr_max_pages: 15
+  # Rows within this fraction of page height are treated as the same line.
+  row_tolerance_ratio: 0.006
+  # A transaction table must show at least this many recognised column headers.
+  min_table_columns: 3
+
+integrity:
+  # A single weak signal must not flood Operations with noise.
+  integrity_review_threshold: 2
+  # Producers that indicate a consumer PDF editor touched the file. Matched as a
+  # case-insensitive substring. NOTE: a *missing* producer is deliberately not a signal
+  # -- absence of metadata is not evidence of editing, and plenty of legitimate tools
+  # write none.
+  consumer_editor_patterns:
+    - Foxit
+    - Adobe Acrobat
+    - Microsoft Word
+    - LibreOffice
+    - iLovePDF
+    - Smallpdf
+    - PDFsam
+    - Nitro
+    - Sejda
+    - PDF24
+
+identity:
+  identity_strong_match: 0.90
+  identity_clear_mismatch: 0.50
+  # Stripped before comparison so legal form does not cause a false mismatch.
+  legal_suffixes:
+    - "private limited"
+    - "pvt ltd"
+    - "pvt. ltd."
+    - "limited"
+    - "ltd"
+    - "llp"
+    - "and company"
+    - "& co"
+    - "enterprises"
+    - "traders"
+    - "industries"
+
+confidence:
+  field_score_weight: 0.60
+  rule_coverage_weight: 0.40
+  # Deliberately asymmetric: a wrong PASS is discovered late downstream - the exact
+  # failure this product exists to prevent. A wrong FIX costs one re-upload.
+  pass_threshold: 0.80
+  fix_threshold: 0.65
+  rule_evidence_threshold: 0.75
+  field_weights:
+    period_start: 0.20
+    period_end: 0.20
+    transactions: 0.25
+    account_holder_name: 0.15
+    account_type: 0.10
+    account_number: 0.10
+
+# Codes that are emitted on the way to an outcome rather than as one. A password
+# prompt is not a failure: nothing is wrong with the document.
+gate_reason_codes:
+  - FILE_PASSWORD_REQUIRED
+
+# The reason-code catalogue, in causal priority order: each level makes the levels below
+# it unmeasurable, so when several rules fail the highest entry becomes the primary
+# reason the customer sees (`PRODUCT_SPEC.md` section 8).
+#
+# `actionable` is the FIX/REVIEW test. A code is actionable only when a concrete customer
+# action exists. "Something is wrong" is never a FIX.
+#
+# `composite_gated: false` means the composite confidence score must NOT veto this
+# verdict. The composite measures how well we read *a bank statement*; for a file that
+# will not open, or a document that is not a statement at all, that measure is
+# meaningless -- gating on it would turn a confident, actionable answer into a needless
+# manual review.
+reason_codes:
+  - {code: FILE_UNSUPPORTED_TYPE,          outcome: FIX,    actionable: true,  composite_gated: false}
+  - {code: FILE_EMPTY,                     outcome: FIX,    actionable: true,  composite_gated: false}
+  - {code: FILE_TOO_LARGE,                 outcome: FIX,    actionable: true,  composite_gated: false}
+  - {code: FILE_CORRUPT,                   outcome: FIX,    actionable: true,  composite_gated: false}
+  - {code: FILE_PASSWORD_INCORRECT,        outcome: FIX,    actionable: true,  composite_gated: false}
+  # Not a document defect: processing failed on our side.
+  - {code: PROCESSING_ERROR,               outcome: REVIEW, actionable: false, composite_gated: false}
+  - {code: DOC_TYPE_MISMATCH,              outcome: FIX,    actionable: true,  composite_gated: false}
+  - {code: DOC_TYPE_UNCERTAIN,             outcome: REVIEW, actionable: false, composite_gated: false}
+  - {code: ACCOUNT_TYPE_NOT_CURRENT,       outcome: FIX,    actionable: true,  composite_gated: true}
+  - {code: PERIOD_INSUFFICIENT_COVERAGE,   outcome: FIX,    actionable: true,  composite_gated: true}
+  - {code: PERIOD_STALE,                   outcome: FIX,    actionable: true,  composite_gated: true}
+  - {code: COMPLETENESS_MISSING_PAGES,     outcome: FIX,    actionable: true,  composite_gated: true}
+  # A screenshot of a banking app, cropped so a column never made it into the image.
+  # Structural, so ungated: we can see exactly what is missing.
+  - {code: READABILITY_PARTIAL_CAPTURE,    outcome: FIX,    actionable: true,  composite_gated: false}
+  # Arithmetic cannot tell an edit from missing content, so this goes to a human rather
+  # than telling the customer to re-upload (ADR-008).
+  - {code: COMPLETENESS_BALANCE_BREAK,     outcome: REVIEW, actionable: false, composite_gated: true}
+  - {code: READABILITY_NO_TEXT,            outcome: FIX,    actionable: true,  composite_gated: false}
+  - {code: READABILITY_POOR_SCAN,          outcome: FIX,    actionable: true,  composite_gated: true}
+  - {code: INTEGRITY_SIGNALS_RAISED,       outcome: REVIEW, actionable: false, composite_gated: true}
+  - {code: IDENTITY_MISMATCH,              outcome: REVIEW, actionable: false, composite_gated: true}
+  - {code: IDENTITY_AMBIGUOUS,             outcome: REVIEW, actionable: false, composite_gated: true}
+  - {code: ACCOUNT_TYPE_UNKNOWN,           outcome: REVIEW, actionable: false, composite_gated: true}
+  - {code: PERIOD_NOT_FOUND,               outcome: REVIEW, actionable: false, composite_gated: true}
+  - {code: EXTRACTION_LOW_CONFIDENCE,      outcome: REVIEW, actionable: false, composite_gated: false}

@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Application data: databases, uploaded documents, generated corpus.
+# Never commit documents -- even synthetic ones are regenerable.
+backend/var/
+corpus/generated/
+
+# Secrets
+.env
+.env.local
+*.pem
+
+# Node
+node_modules/
+frontend/dist/
+frontend/node_modules/.tmp/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
