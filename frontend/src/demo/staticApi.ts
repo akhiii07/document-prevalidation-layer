@@ -184,21 +184,37 @@ function summaryOf(sub: Submission): DocumentSummary {
   };
 }
 
-function requirementOf(session: Session) {
-  const last = session.submissions.at(-1);
-  const base: Requirement = last
-    ? clone(tapeOf(last.sampleId).requirement)
-    : { ...clone(anyTape().requirement), status: "PENDING", submission_count: 0, first_time_cleared: null };
+/**
+ * Mirrors `requirement_status_for` in the backend's state machine.
+ *
+ * Reading the status off the tape's recorded requirement instead looked right and was
+ * wrong: the tape records the requirement as it stood at the *end* of the run, so an
+ * encrypted document sitting on its password prompt reported CLEARED — the state it
+ * would eventually reach, announced before it had.
+ */
+function requirementStatusFor(documentStatus: string): Requirement["status"] {
+  switch (documentStatus) {
+    case "PASSED":
+      return "CLEARED";
+    case "NEEDS_FIX":
+      return "AWAITING_CUSTOMER_ACTION";
+    case "IN_REVIEW":
+      return "AWAITING_REVIEW";
+    default:
+      return "IN_PROGRESS";
+  }
+}
+
+function requirementOf(session: Session): Requirement {
+  const active = session.submissions.at(-1);
   const cleared = session.submissions.find(
     (s) => frameAt(s, Date.now()).frame.status.status === "PASSED",
   );
   return {
-    ...base,
-    status: cleared
-      ? "CLEARED"
-      : last
-        ? base.status
-        : "PENDING",
+    ...clone(anyTape().requirement),
+    status: active
+      ? requirementStatusFor(frameAt(active, Date.now()).frame.status.status)
+      : "PENDING",
     submission_count: session.submissions.length,
     first_time_cleared: cleared ? cleared.index === 1 : null,
   };
