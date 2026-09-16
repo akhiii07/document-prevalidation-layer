@@ -1,0 +1,71 @@
+# Publish the recorded demo to GitHub Pages.
+#
+# Pages serves files, not processes, so this build has no pipeline behind it. It ships
+# `frontend/src/demo/fixtures.json` — recordings captured from the real system by
+# `tools/capture_demo_fixtures.py` — and replays them against the clock. The UI says so
+# on every page; a demo that behaves like the product without admitting it is a recording
+# invites a reasonable person to conclude something untrue.
+name: Deploy recorded demo to Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a running publish: a half-finished deployment is worse than a late one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+      - name: Build
+        env:
+          # The repository name is the Pages sub-path, and VITE_STATIC_DEMO is what swaps
+          # the API client onto the recordings. Both are build-time only, so a deployment
+          # that does have a backend cannot be talked into replaying fixtures.
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_STATIC_DEMO: "1"
+        run: npm run build
+
+      - name: SPA fallback
+        # Pages has no rewrite rules. The app uses a hash router so deep links already
+        # work, but a stray path should land on the app rather than a 404 page.
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

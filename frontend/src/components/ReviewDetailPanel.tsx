@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ReviewDetail, RuleResult } from "../lib/api";
+import { STATIC_DEMO, type ReviewDetail, type RuleResult } from "../lib/api";
 
 const STATUS_STYLE: Record<RuleResult["status"], string> = {
   PASS: "text-pass",
@@ -107,17 +107,27 @@ export function ReviewDetailPanel({
 
       <section>
         <SectionTitle>Document</SectionTitle>
-        <a
-          href={`/api${review.download_url}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-block rounded border border-line px-3 py-1.5 text-[12px] hover:border-accent"
-        >
-          View document ↗
-        </a>
-        <p className="mt-1.5 text-[11px] text-muted">
-          Opens through a short-lived signed link. Documents are never publicly addressable.
-        </p>
+        {STATIC_DEMO ? (
+          <p className="rounded border border-line bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted">
+            The document itself is not part of this recording. In the live product this
+            opens through a short-lived signed link; documents are never publicly
+            addressable.
+          </p>
+        ) : (
+          <>
+            <a
+              href={`/api${review.download_url}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block rounded border border-line px-3 py-1.5 text-[12px] hover:border-accent"
+            >
+              View document ↗
+            </a>
+            <p className="mt-1.5 text-[11px] text-muted">
+              Opens through a short-lived signed link. Documents are never publicly addressable.
+            </p>
+          </>
+        )}
       </section>
 
       <section className="border-t border-line pt-4">

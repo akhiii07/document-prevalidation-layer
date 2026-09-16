@@ -10,6 +10,14 @@ import { opsHeaders } from "./ops";
 
 const BASE = "/api";
 
+/**
+ * The static build has no backend.
+ *
+ * Set at build time, never at runtime, so a deployment that *does* have a backend cannot
+ * be switched into replaying recordings by anything a visitor does.
+ */
+export const STATIC_DEMO = import.meta.env.VITE_STATIC_DEMO === "1";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -22,6 +30,8 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (STATIC_DEMO) return requestFromRecording<T>(path, init);
+
   // `...init` must come FIRST. Spreading it last overwrites the merged `headers`
   // object with whatever the caller passed, which silently drops `Content-Type` on any
   // request that also sets a header -- every operations call. The body then arrives
@@ -49,6 +59,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(detail ?? `${init?.method ?? "GET"} ${path} failed`, response.status, detail);
   }
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+}
+
+/**
+ * Serve a call from the recorded pipeline instead of the network.
+ *
+ * Deliberately routed through the same `request` signature the live client uses, so no
+ * page, hook or component knows which mode it is running in — the difference lives in
+ * exactly one place. The artificial delay is not decoration: without it, state
+ * transitions land in the same frame as the request and the processing indicator never
+ * appears, which would misrepresent how the product behaves.
+ */
+async function requestFromRecording<T>(path: string, init?: RequestInit): Promise<T> {
+  const { handleDemoRequest, DemoUnsupported } = await import("../demo/staticApi");
+  await new Promise((resolve) => setTimeout(resolve, 90 + Math.random() * 120));
+  try {
+    return handleDemoRequest(path, init) as T;
+  } catch (error) {
+    if (error instanceof DemoUnsupported) {
+      throw new ApiError(error.message, 501, error.message);
+    }
+    throw error;
+  }
 }
 
 /**

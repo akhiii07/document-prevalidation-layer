@@ -3,6 +3,7 @@ import { OpsGate } from "../components/OpsGate";
 import {
   api,
   ApiError,
+  STATIC_DEMO,
   type ApplicationSummary,
   type Handoff,
   type HandoffDocument,
@@ -250,14 +251,23 @@ function DocumentPanel({ document }: { document: HandoffDocument }) {
       </div>
 
       <div className="border-t border-line px-4 py-3">
-        <a
-          href={`/api${document.download_url}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-block rounded border border-line px-3 py-1.5 text-[12px] hover:border-accent"
-        >
-          Download verified document ↗
-        </a>
+        {STATIC_DEMO ? (
+          // There is no object store behind a static build, so a download link would
+          // 404. Saying why is better than a dead control.
+          <p className="rounded border border-line bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted">
+            The document itself is not part of this recording. In the live product this is
+            a short-lived signed link; documents are never publicly addressable.
+          </p>
+        ) : (
+          <a
+            href={`/api${document.download_url}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block rounded border border-line px-3 py-1.5 text-[12px] hover:border-accent"
+          >
+            Download verified document ↗
+          </a>
+        )}
       </div>
     </section>
   );

@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+  // A GitHub Pages project site is served from /<repo>/, not from the domain root, so
+  // asset URLs need that prefix. Set only for the Pages build: the local build and the
+  // dev server are served from the root and would break with it.
+  base: process.env.VITE_BASE ?? "/",
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

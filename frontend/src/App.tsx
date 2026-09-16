@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { STATIC_DEMO } from "./lib/api";
 import { CustomerChat } from "./pages/CustomerChat";
 import { Operations } from "./pages/Operations";
 import { SalesHandoff } from "./pages/SalesHandoff";
@@ -41,11 +42,42 @@ export default function App() {
         ))}
       </nav>
 
+      {STATIC_DEMO && <RecordedDemoNotice />}
+
       <main className="min-h-0 flex-1">
         {view === "customer" && <CustomerChat />}
         {view === "operations" && <Operations />}
         {view === "sales" && <SalesHandoff />}
       </main>
+    </div>
+  );
+}
+
+/**
+ * Say what this is, once, where nobody can miss it.
+ *
+ * A demo that behaves like the product without saying it is a recording invites a
+ * reasonable person to conclude something untrue. Given that this product exists to stop
+ * systems from making confident claims they cannot support, leaving the label off would
+ * be a poor joke.
+ */
+function RecordedDemoNotice() {
+  return (
+    <div className="border-b border-line bg-surface px-4 py-1.5 text-[11px] leading-relaxed text-muted">
+      <span className="font-medium text-ink">Recorded demo.</span> There is no server
+      behind this page, so the responses below are replays of real runs of the pipeline —
+      every message, reason code and confidence figure is what the system actually
+      produced, at the speed it actually took. Validating your own document needs the live
+      backend:{" "}
+      <a
+        href="https://github.com/akhiii07/document-prevalidation-layer"
+        target="_blank"
+        rel="noreferrer"
+        className="underline decoration-line underline-offset-2 hover:text-ink"
+      >
+        run it locally
+      </a>
+      .
     </div>
   );
 }

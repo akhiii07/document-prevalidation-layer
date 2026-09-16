@@ -24,6 +24,23 @@ you cannot parse.
 
 ---
 
+## Try it
+
+**[akhiii07.github.io/document-prevalidation-layer](https://akhiii07.github.io/document-prevalidation-layer/)**
+
+A **recorded** demo. GitHub Pages serves files, not processes, so there is no pipeline
+behind that page: `tools/capture_demo_fixtures.py` drives the real system, records what
+it returned and when, and the static build replays those recordings against the clock.
+Every message, reason code, rule result, confidence figure and duration is therefore
+something the product genuinely produced — what is simulated is only *which* recording
+plays and when, never its content. The one thing it cannot do is validate a document
+nobody has validated yet, so uploads are refused with an explanation rather than faked.
+
+All three views are live there: the borrower's chat, the Operations review queue and the
+Sales / LOS handoff. To validate your own document, run it locally (below).
+
+---
+
 ## Documentation
 
 Read in this order:
