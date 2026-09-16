@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { setOpsSecret } from "../lib/ops";
+import { isHeaderSafe, normaliseSecret, setOpsSecret } from "../lib/ops";
 
 /**
  * The operator credential gate.
@@ -11,6 +11,28 @@ import { setOpsSecret } from "../lib/ops";
  */
 export function OpsGate({ onUnlock, error }: { onUnlock: () => void; error?: string | null }) {
   const [secret, setSecret] = useState("");
+  const [rejected, setRejected] = useState<string | null>(null);
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const cleaned = normaliseSecret(secret);
+    if (!cleaned) return;
+
+    // Checked here rather than left to `fetch`, which rejects an unsendable header value
+    // by throwing before the request exists — a failure that arrives as
+    // "String contains non ISO-8859-1 code point" on a screen with no way back.
+    if (!isHeaderSafe(cleaned)) {
+      setRejected(
+        "That secret contains a character that can't be sent in a request header — " +
+          "usually something picked up by copying from formatted text. Try typing it instead.",
+      );
+      return;
+    }
+
+    setRejected(null);
+    setOpsSecret(cleaned);
+    onUnlock();
+  }
 
   return (
     <div className="mx-auto max-w-sm px-6 py-20">
@@ -19,33 +41,30 @@ export function OpsGate({ onUnlock, error }: { onUnlock: () => void; error?: str
         Enter the operations secret to view the review queue.
       </p>
 
-      <form
-        className="mt-5 space-y-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!secret.trim()) return;
-          setOpsSecret(secret.trim());
-          onUnlock();
-        }}
-      >
+      <form className="mt-5 space-y-2" onSubmit={submit}>
         <input
           type="password"
           autoFocus
           value={secret}
-          onChange={(event) => setSecret(event.target.value)}
+          onChange={(event) => {
+            setSecret(event.target.value);
+            if (rejected) setRejected(null);
+          }}
           placeholder="Operations secret"
           className="w-full rounded border border-line px-3 py-2 text-[13px] outline-none focus:border-accent"
         />
         <button
           type="submit"
-          disabled={!secret.trim()}
+          disabled={!normaliseSecret(secret)}
           className="w-full rounded bg-accent px-3 py-2 text-[13px] font-medium text-white disabled:opacity-40"
         >
           Continue
         </button>
       </form>
 
-      {error && <p className="mt-3 text-[12px] text-fix">{error}</p>}
+      {(rejected || error) && (
+        <p className="mt-3 text-[12px] leading-relaxed text-fix">{rejected ?? error}</p>
+      )}
 
       <p className="mt-6 border-t border-line pt-4 text-[11px] leading-relaxed text-muted">
         Prototype access control: a single shared secret, not per-operator identity. A real

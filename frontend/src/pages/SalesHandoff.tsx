@@ -112,6 +112,26 @@ export function SalesHandoff() {
             </button>
           ))}
         </div>
+
+        {/*
+          Without this the tab is a dead end: a credential the server rejects clears
+          itself and returns to the gate, but one the *browser* rejects never reaches the
+          server at all, and an operator who mistypes has no way back. Operations has had
+          a Lock control since Phase 10; this one was simply missed.
+        */}
+        <button
+          type="button"
+          onClick={() => {
+            clearOpsSecret();
+            setUnlocked(false);
+            setHandoff(null);
+            setApplications(null);
+            setError(null);
+          }}
+          className="border-t border-line px-4 py-2 text-left text-[11px] text-muted hover:text-ink"
+        >
+          Lock
+        </button>
       </aside>
 
       <section className="min-w-0 flex-1 overflow-y-auto px-6 py-5">

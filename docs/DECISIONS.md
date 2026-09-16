@@ -789,3 +789,65 @@ least identifiable.
 **Tradeoff.** A statement that prints its IFSC only in a footer is no longer identified by
 it. Identification is presentational — no blocking rule depends on it — so a missing bank
 name costs far less than a wrong one.
+
+---
+
+## ADR-032 — A credential the browser cannot send must not reach `fetch`
+
+**Context.** Testing the prototype with a rotated operations secret, both gated tabs died
+with:
+
+> Failed to execute 'fetch' on 'Window': Failed to read the 'headers' property from
+> 'RequestInit': String contains non ISO-8859-1 code point.
+
+The secret had been pasted, and the paste carried an invisible character —
+a zero-width space is the usual culprit when a credential is copied out of formatted
+text. Header values must be Latin-1, so `fetch` rejected it.
+
+Three separate weaknesses turned that into a dead end.
+
+1. `opsHeaders()` put whatever was in `sessionStorage` straight into a header. No
+   validation anywhere between the operator's keyboard and the browser's header parser.
+2. `fetch` rejects an unsendable header by throwing a `TypeError` **before the request
+   exists**. Every error path in Operations and Sales is written around `ApiError` with a
+   status — a transport-layer throw matches none of them, so the "bad credential, clear
+   it and return to the gate" recovery never ran.
+3. Sales/LOS had no Lock control. Operations has had one since Phase 10; this tab was
+   simply missed. With the secret stuck and no way to clear it, the tab was unusable
+   until the browser tab was closed.
+
+The reported symptom — "the Refresh and − buttons don't work" — was all three: Refresh
+re-ran the same failing fetch, and the "−" was not a button at all but the queue-count
+badge showing its unknown-value placeholder, because the load never completed.
+
+**Decision.**
+
+1. `isHeaderSafe()` gates the value in `opsHeaders()`. An unsafe secret is **cleared and
+   omitted**, degrading the failure to a plain 401 — the one failure every caller already
+   knows how to recover from. One change at the source fixes both tabs.
+2. `normaliseSecret()` strips zero-width and byte-order marks and trims. The operator did
+   not type those characters, cannot see them, and would have no way to find them; fixing
+   it silently is kinder than reporting it.
+3. `OpsGate` validates on submit and explains the rejection in terms of the likely cause
+   ("usually something picked up by copying from formatted text. Try typing it instead"),
+   rather than repeating the browser's message.
+4. Sales/LOS gets a Lock control, for parity and so the tab is never a dead end.
+
+**Alternative considered.** Catch the `TypeError` in each page's error handler and treat
+it as an auth failure. Rejected: it spreads knowledge of a `fetch` implementation detail
+across every caller, and leaves the unsendable value in storage to fail again on the next
+request. Validating at the point the value becomes a header is the narrower fix.
+
+**Tradeoff.** A secret that legitimately contains non-Latin-1 characters can no longer be
+used. That is a real restriction and the right one — such a secret could never have been
+sent in this header anyway; the difference is that the operator now finds out at the gate
+instead of from an exception three screens later.
+
+**The uncomfortable part.** This product exists to replace unhelpful failure messages with
+specific, actionable ones. Its own operator console failed with a raw browser exception
+and no way to recover. Worth remembering that the standard has to be applied inward as
+well as outward.
+
+**Known gap:** the frontend has no test runner, so `normaliseSecret` and `isHeaderSafe` —
+both pure and trivially testable — are covered only by manual verification. The backend's
+392 tests have no counterpart here. Worth closing in Phase 12.

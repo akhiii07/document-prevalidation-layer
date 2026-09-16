@@ -664,6 +664,7 @@ See `docs/DECISIONS.md` for full reasoning.
 | 029 | An unrecognised column is a column, not a gap |
 | 030 | Silence about supersession is indistinguishable from lying |
 | 031 | A bank is identified from the masthead, never from the body |
+| 032 | A credential the browser cannot send must not reach `fetch` |
 
 ---
 
