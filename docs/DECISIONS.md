@@ -851,3 +851,50 @@ well as outward.
 **Known gap:** the frontend has no test runner, so `normaliseSecret` and `isHeaderSafe` —
 both pure and trivially testable — are covered only by manual verification. The backend's
 392 tests have no counterpart here. Worth closing in Phase 12.
+
+---
+
+## ADR-033 — The recorded demo has no gate, because it has nothing to gate
+
+**Context.** Operations and Sales/LOS sit behind a typed shared secret (ADR-011). That is
+right in the product: those screens carry other customers' bank statements, their
+extracted financial data, and the power to accept or reject a review.
+
+The recorded GitHub Pages build inherited the gate — and in that build it authenticates
+nothing. There is no server. `staticApi.ts` ignores the header entirely. So a visitor met
+a credential prompt, typed anything at all, and was let through, which is worse than no
+prompt in two ways: it reads as security theatre, and it stands between a stranger and
+the two screens the demo most wants them to see.
+
+The observation came from a reader of the deck, who asked why they had to "write a code"
+to look at the Sales and Ops tabs. The honest answer was that they didn't — the prompt
+was checking nothing.
+
+**Decision.** In the static build both tabs open directly. The Lock control is replaced
+by a line in the same slot:
+
+> In the live product this queue sits behind an operator credential. Open here so you can
+> look around.
+
+The 401 recovery path is also short-circuited in demo mode, so a future change to the
+replay adapter cannot strand a visitor at a gate that will never accept anything.
+
+The live build is untouched: gate, Lock control, credential validation (ADR-032) all
+unchanged.
+
+**Alternative considered.** Pre-fill the secret and auto-submit, leaving the gate visible
+for a moment. Rejected as the worst of both — the visitor still watches a security
+ceremony, and now it is one they did not participate in.
+
+**Also considered.** Keep the gate and publish the demo secret on the slide. Rejected:
+it adds a step to the deck and a step to the demo in order to protect nothing.
+
+**Tradeoff.** A visitor to the demo does not see that the real product gates these
+screens — which matters, because access control is part of the design and a fintech
+reader will look for it. Hence the replacement line rather than an empty slot: the
+posture is still communicated, just not re-enacted. The full data-handling position is
+appendix A3 of the case study.
+
+**The general point.** A demo should reproduce what the product *does*, not what it
+*requires*. Reproducing a requirement that no longer applies is how demos acquire friction
+that teaches the visitor nothing.

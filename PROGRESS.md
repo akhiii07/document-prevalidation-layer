@@ -665,6 +665,7 @@ See `docs/DECISIONS.md` for full reasoning.
 | 030 | Silence about supersession is indistinguishable from lying |
 | 031 | A bank is identified from the masthead, never from the body |
 | 032 | A credential the browser cannot send must not reach `fetch` |
+| 033 | The recorded demo has no gate, because it has nothing to gate |
 
 ---
 

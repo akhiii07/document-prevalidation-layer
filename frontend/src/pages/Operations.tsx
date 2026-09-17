@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { OpsGate } from "../components/OpsGate";
 import { ReviewDetailPanel } from "../components/ReviewDetailPanel";
-import { api, ApiError, type ReviewDetail, type ReviewSummary } from "../lib/api";
+import {
+  api,
+  ApiError,
+  STATIC_DEMO,
+  type ReviewDetail,
+  type ReviewSummary,
+} from "../lib/api";
 import { clearOpsSecret, getOpsSecret } from "../lib/ops";
 
 /**
@@ -12,7 +18,11 @@ import { clearOpsSecret, getOpsSecret } from "../lib/ops";
  * evidence, not a score.
  */
 export function Operations() {
-  const [unlocked, setUnlocked] = useState(() => getOpsSecret() !== null);
+  // The recorded demo has no server to authenticate against, so a credential prompt
+  // there checks nothing and only stands between a visitor and the two tabs they came to
+  // see. The live build still gates them: these screens carry other customers' bank
+  // statements and the power to accept or reject a review.
+  const [unlocked, setUnlocked] = useState(() => STATIC_DEMO || getOpsSecret() !== null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [queue, setQueue] = useState<ReviewSummary[] | null>(null);
   const [selected, setSelected] = useState<ReviewDetail | null>(null);
@@ -24,7 +34,7 @@ export function Operations() {
       setQueue(await api.reviews());
       setAuthError(null);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      if (error instanceof ApiError && error.status === 401 && !STATIC_DEMO) {
         clearOpsSecret();
         setUnlocked(false);
         setAuthError("That secret was not accepted.");
@@ -113,16 +123,23 @@ export function Operations() {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            clearOpsSecret();
-            setUnlocked(false);
-          }}
-          className="border-t border-line px-4 py-2 text-left text-[11px] text-muted hover:text-ink"
-        >
-          Lock
-        </button>
+        {STATIC_DEMO ? (
+          <p className="border-t border-line px-4 py-2 text-[11px] leading-relaxed text-muted">
+            In the live product this queue sits behind an operator credential. Open here
+            so you can look around.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              clearOpsSecret();
+              setUnlocked(false);
+            }}
+            className="border-t border-line px-4 py-2 text-left text-[11px] text-muted hover:text-ink"
+          >
+            Lock
+          </button>
+        )}
       </aside>
 
       <section className="min-w-0 flex-1 overflow-y-auto px-6 py-5">

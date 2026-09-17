@@ -24,7 +24,7 @@ const STATUS_STYLE: Record<string, string> = {
  * integration exercise that would demonstrate nothing about the hypothesis.
  */
 export function SalesHandoff() {
-  const [unlocked, setUnlocked] = useState(() => getOpsSecret() !== null);
+  const [unlocked, setUnlocked] = useState(() => STATIC_DEMO || getOpsSecret() !== null);
   const [error, setError] = useState<string | null>(null);
   const [applications, setApplications] = useState<ApplicationSummary[] | null>(null);
   const [handoff, setHandoff] = useState<Handoff | null>(null);
@@ -34,7 +34,7 @@ export function SalesHandoff() {
       setApplications(await api.listApplications());
       setError(null);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      if (err instanceof ApiError && err.status === 401 && !STATIC_DEMO) {
         clearOpsSecret();
         setUnlocked(false);
         setError("That secret was not accepted.");
@@ -120,19 +120,26 @@ export function SalesHandoff() {
           server at all, and an operator who mistypes has no way back. Operations has had
           a Lock control since Phase 10; this one was simply missed.
         */}
-        <button
-          type="button"
-          onClick={() => {
-            clearOpsSecret();
-            setUnlocked(false);
-            setHandoff(null);
-            setApplications(null);
-            setError(null);
-          }}
-          className="border-t border-line px-4 py-2 text-left text-[11px] text-muted hover:text-ink"
-        >
-          Lock
-        </button>
+        {STATIC_DEMO ? (
+          <p className="border-t border-line px-4 py-2 text-[11px] leading-relaxed text-muted">
+            In the live product this view sits behind an operator credential. Open here so
+            you can look around.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              clearOpsSecret();
+              setUnlocked(false);
+              setHandoff(null);
+              setApplications(null);
+              setError(null);
+            }}
+            className="border-t border-line px-4 py-2 text-left text-[11px] text-muted hover:text-ink"
+          >
+            Lock
+          </button>
+        )}
       </aside>
 
       <section className="min-w-0 flex-1 overflow-y-auto px-6 py-5">

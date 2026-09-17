@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { STATIC_DEMO } from "../lib/api";
 import { isHeaderSafe, normaliseSecret, setOpsSecret } from "../lib/ops";
 
 /**
@@ -65,16 +64,6 @@ export function OpsGate({ onUnlock, error }: { onUnlock: () => void; error?: str
 
       {(rejected || error) && (
         <p className="mt-3 text-[12px] leading-relaxed text-fix">{rejected ?? error}</p>
-      )}
-
-      {STATIC_DEMO && (
-        // The recorded build authenticates nothing -- there is no server to authenticate
-        // against. Saying so is better than letting a visitor guess at a credential that
-        // is not being checked.
-        <p className="mt-4 rounded border border-line bg-surface px-3 py-2 text-[11px] leading-relaxed text-muted">
-          In this recorded demo any value opens the console — there is no server to check
-          it against. The live product gates these tabs on a shared secret.
-        </p>
       )}
 
       <p className="mt-6 border-t border-line pt-4 text-[11px] leading-relaxed text-muted">
